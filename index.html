@@ -241,25 +241,43 @@
 
     <!-- Scripts -->
     <script>
-        // --- AUTOPLAY MUSIC TRICK ---
+        // --- MUSIC: start on first real user gesture, with a manual fallback button ---
         const bgMusic = document.getElementById('bgMusic');
         let musicStarted = false;
 
         const startMusic = () => {
-            if (!musicStarted) {
-                bgMusic.play().then(() => {
-                    musicStarted = true;
-                }).catch(err => console.log("Audio play failed:", err));
-                
-                ['click', 'mousemove', 'touchstart', 'scroll'].forEach(evt => 
-                    window.removeEventListener(evt, startMusic)
-                );
-            }
+            if (musicStarted) return;
+            bgMusic.play().then(() => {
+                musicStarted = true;
+                musicBtn.classList.remove('paused');
+            }).catch(err => console.log("Audio play failed:", err));
         };
 
-        ['click', 'mousemove', 'touchstart', 'scroll'].forEach(evt => 
-            window.addEventListener(evt, startMusic, { once: true })
+        // Only genuine user-activation events count for autoplay policies —
+        // mousemove/scroll do NOT, and using them here was blocking the real click.
+        ['click', 'touchstart', 'keydown'].forEach(evt =>
+            window.addEventListener(evt, startMusic, { once: true, passive: true })
         );
+
+        // Visible manual control, in case autoplay is blocked entirely on a device
+        const musicBtn = document.createElement('div');
+        musicBtn.id = 'musicBtn';
+        musicBtn.className = 'paused';
+        musicBtn.style.cssText = 'position:fixed;bottom:1.4rem;right:1.4rem;z-index:50;width:52px;height:52px;border-radius:50%;background:rgba(20,10,15,0.7);border:1px solid rgba(255,150,180,0.4);box-shadow:0 0 20px rgba(255,100,150,0.25);display:flex;align-items:center;justify-content:center;cursor:pointer;';
+        musicBtn.innerHTML = '<i class="fa-solid fa-music" style="color:#f2a9c4;font-size:18px;"></i>';
+        document.body.appendChild(musicBtn);
+        musicBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (bgMusic.paused) {
+                bgMusic.play().then(() => {
+                    musicStarted = true;
+                    musicBtn.classList.remove('paused');
+                }).catch(err => console.log("Audio play failed:", err));
+            } else {
+                bgMusic.pause();
+                musicBtn.classList.add('paused');
+            }
+        });
 
 
         // --- 3D THREE.JS BACKGROUND ---
